@@ -31,25 +31,34 @@ def browse_folder(title="Chọn folder"):
     except: return ""
 
 def _build_raw_index(nas_paths, log_fn=None):
+    import concurrent.futures, threading
     raw = {}
-    for nas_dir in nas_paths:
+    lock = threading.Lock()
+
+    def _scan_one(nas_dir):
         if not os.path.exists(nas_dir):
             if log_fn: log_fn(f"⚠️ NAS không tồn tại: {nas_dir}")
-            continue
+            return
         if log_fn: log_fn(f"📡 Quét: {nas_dir}...")
         proc = subprocess.Popen(["find", nas_dir, "-type", "f"],
                                 stdout=subprocess.PIPE, text=True)
+        local = {}
         c = 0
         for line in proc.stdout:
             path = line.strip()
             if path.lower().endswith(('.tmp', '.crdownload', '.txt')): continue
             fname = os.path.splitext(os.path.basename(path))[0].lower()
-            raw[fname] = path
+            local[fname] = path
             c += 1
             if c % 5000 == 0 and log_fn:
-                log_fn(f"  ... {c:,} file đã quét")
+                log_fn(f"  [{os.path.basename(nas_dir)}] {c:,} file...")
         proc.wait()
-        if log_fn: log_fn(f"  ✅ {c:,} file")
+        with lock:
+            raw.update(local)
+        if log_fn: log_fn(f"  ✅ {os.path.basename(nas_dir)}: {c:,} file")
+
+    with concurrent.futures.ThreadPoolExecutor() as ex:
+        list(ex.map(_scan_one, nas_paths))
     return raw
 
 def _derive_index(raw):
