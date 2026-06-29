@@ -105,6 +105,7 @@ class NasPullApp(ctk.CTk):
         self.cfg = load_config()
         self.export_var = tk.StringVar(value="")
         self.is_running = False
+        self._cancel = False
         self._build_ui()
         self._update_cache_label()
 
@@ -147,12 +148,19 @@ class NasPullApp(ctk.CTk):
                                           command=self._run_refresh)
         self.btn_refresh.pack(side="right")
 
-        # Run button
-        self.btn_run = ctk.CTkButton(self, text="▶  PULL FROM NAS", height=44,
+        # Run + Cancel buttons
+        fb = ctk.CTkFrame(self, fg_color="transparent")
+        fb.pack(fill="x", padx=20, pady=(8,6))
+        self.btn_run = ctk.CTkButton(fb, text="▶  PULL FROM NAS", height=44,
                                       font=("Consolas", 15, "bold"),
                                       fg_color=BLUE, hover_color="#1565C0",
                                       text_color="white", command=self._run)
-        self.btn_run.pack(fill="x", padx=20, pady=(8,6))
+        self.btn_run.pack(side="left", fill="x", expand=True)
+        self.btn_cancel = ctk.CTkButton(fb, text="✕", width=48, height=44,
+                                         font=("Consolas", 16, "bold"),
+                                         fg_color="#555", hover_color="#c62828",
+                                         state="disabled", command=self._cancel_run)
+        self.btn_cancel.pack(side="left", padx=(6,0))
 
         # Log
         ctk.CTkLabel(self, text="Log", font=("Consolas", 12, "bold"),
@@ -204,13 +212,20 @@ class NasPullApp(ctk.CTk):
             entries.append({"name": dst_name, "id": vid_id})
         return entries
 
+    def _cancel_run(self):
+        self._cancel = True
+        self._status("⏹ Đang dừng...")
+
     def _set_busy(self, busy, label="▶  PULL FROM NAS"):
         self.is_running = busy
         if busy:
+            self._cancel = False
             self.btn_run.configure(text="⏳  ĐANG CHẠY...", fg_color="#555", state="disabled")
+            self.btn_cancel.configure(state="normal")
             self.btn_refresh.configure(state="disabled")
         else:
             self.btn_run.configure(text=label, fg_color=BLUE, state="normal")
+            self.btn_cancel.configure(state="disabled")
             self.btn_refresh.configure(state="normal")
 
     def _run_refresh(self):
@@ -311,6 +326,9 @@ class NasPullApp(ctk.CTk):
             total = len(entries)
 
             for i, entry in enumerate(entries, 1):
+                if self._cancel:
+                    self.after(0, lambda: self._log("⏹ Đã dừng theo yêu cầu."))
+                    break
                 name   = entry["name"]
                 vid_id = entry["id"]
                 prefix = f"[{i}/{total}]"
