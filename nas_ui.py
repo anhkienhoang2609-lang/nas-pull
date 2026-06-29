@@ -330,9 +330,19 @@ class NasPullApp(ctk.CTk):
                     continue
 
                 try:
-                    subprocess.run(["cp", found, dst], check=True)
+                    size_mb = os.path.getsize(found) / 1024 / 1024
+                    self.after(0, lambda p=prefix, n=name+ext, s=size_mb:
+                               self._log(f"{p} ⬇️  Đang kéo: {n} ({s:.0f} MB)..."))
+                    subprocess.run(
+                        ["rsync", "--timeout=30", "--inplace", found, dst],
+                        check=True, timeout=600
+                    )
                     self.after(0, lambda p=prefix, n=name+ext: self._log(f"{p} ✅ {n}"))
                     success += 1
+                except subprocess.TimeoutExpired:
+                    if os.path.exists(dst): os.remove(dst)
+                    self.after(0, lambda p=prefix, n=name: self._log(f"{p} ⏱️ Timeout: {n}"))
+                    failed += 1
                 except Exception as e:
                     self.after(0, lambda p=prefix, n=name, err=str(e): self._log(f"{p} ❌ {n}: {err}"))
                     failed += 1
