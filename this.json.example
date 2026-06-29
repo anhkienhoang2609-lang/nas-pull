@@ -1,0 +1,6 @@
+{
+    "GlobalSettings": {
+        "nas_path": "/mnt/your_nas_folder_1, /mnt/your_nas_folder_2",
+        "export_path": "/home/user/Downloads"
+    }
+}

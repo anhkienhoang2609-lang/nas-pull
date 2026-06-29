@@ -1,0 +1,8 @@
+this.json
+nas_cache.json
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec.bak
+venv/
